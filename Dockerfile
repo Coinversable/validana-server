@@ -38,4 +38,4 @@ RUN yarn --cwd /usr/node install --frozen-lockfile
 #Add user and entry point
 USER node
 WORKDIR /usr/node
-ENTRYPOINT ["node", "-e", "require('./dist/index.js').start(new Map().set('v1',require('./dist/basics/basichandler.js').default))", "dist/index.js"]
+ENTRYPOINT ["node", "-e", "require('./dist/index.js').start(new Map().set('v1',new (require('./dist/basics/basichandler.js').default)()))", "dist/index.js"]
