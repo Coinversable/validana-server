@@ -392,7 +392,7 @@ Config.addStringConfig("VSERVER_API", undefined, (value) => {
 });
 Config.addBoolConfig("VSERVER_METRICSDEFAULT", true);
 Config.addBoolConfig("VSERVER_CACHING", true);
-Config.addBoolConfig("VSERVER_TLS", true, (value, config) => {
+Config.addBoolConfig("VSERVER_TLS", false, (value, config) => {
 	if (value) {
 		if (config.VSERVER_KEYPATH === undefined || config.VSERVER_CERTPATH === undefined) {
 			throw new Error("Invalid keypath or certpath, using tls but one of them is undefined.");
