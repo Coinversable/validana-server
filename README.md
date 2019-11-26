@@ -52,15 +52,14 @@ Start Validana Server
 
 Extending the Validana Server
 -----------------------------
-1. Add as dependency in package.json: `"validana-server": "git://github.com/Coinversable/validana-server.git"`
-2. In the main entrypoint of your app add:
+1. Add as dependency in package.json: `"@coinversable/validana-server": "^2.1.0"`
+2. Create a request handler that extends 'RequestHandler' (or 'addBasics(RequestHandler)' ).
+3. In the main entrypoint of your app add:
 
 ```
 import { Log, start } from "validana-server";
-Log.options.tags!.version = "1.0.0"; //The version of your application if you want to use sentry
-start();
+import { MyRequestHandler } from "...";
+Log.options.tags.version = "1.0.0"; //The version of your application if you want to use sentry
+start(new Map().set("v1", new MyRequestHandler()));
 ```
-
-3. Create an action handler that extends 'ActionHandler' (or 'addBasics(ActionHandler)' ).
-4. In the config file add: `"VSERVER_API": "{\"v1\": \"dist/actionhandlerV1.js\"}"` (Where 'v1' is the endpoint where you want it available and 'dist/actionhandlerV1.js' is the handler you created.)
-5. You can now run it using `node <path/to/entrypoint.js> <path/to/config.json>`
+4. You can now run it using `node <path/to/entrypoint.js> <path/to/config.json>`

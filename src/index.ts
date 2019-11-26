@@ -1,4 +1,4 @@
-/**
+/*!
  * @license
  * Copyright Coinversable B.V. All Rights Reserved.
  *
@@ -6,19 +6,33 @@
  * found in the LICENSE file at https://validana.io/license
  */
 
-export { Crypto } from "./tools/crypto";
-export { Log } from "./tools/log";
+import { Crypto, Log, c, Transaction, Block, PrivateKey, PublicKey } from "@coinversable/validana-core";
+export { Crypto, Log, c, Transaction, Block, PrivateKey, PublicKey };
 
-export { Handler } from "./handlers/handler";
-export { RestHandler } from "./handlers/resthandler";
-export { WebsocketHandler } from "./handlers/wshandler";
+export { Protocol, Message } from "./protocol/protocol";
+export { HttpProtocol } from "./protocol/http";
+export { WebsocketProtocol } from "./protocol/websocket";
 
-export { addBasics } from "./basics/addBasics";
+export { addBasics } from "./basics/addbasics";
 export { BasicRequestTypes, BasicPushTypes, RequestData, ReponseData, PushData, ProcessRequest, TxRequest, Contract, TxResponseOrPush } from "./basics/basicapi";
 import BasicHandler from "./basics/basichandler";
 export { BasicHandler };
 
-export { Database } from "./database";
-export { DBTransaction, ActionHandler, TransactionStatus, UpdateReason } from "./actionhandler";
+export { ServerEventEmitter, ServerEventGenerator } from "./core/events";
+export { Database, DBTransaction, TransactionStatus } from "./core/database";
+export { ServerCache } from "./core/servercache";
+export { RequestHandler } from "./core/requesthandler";
+export { HttpServer } from "./core/httpserver";
+export { Metrics } from "./core/metrics";
+
 export { Config } from "./config";
 export { start } from "./app";
+
+/** @depricated Use the new name Protocol. */
+export { Protocol as Handler } from "./protocol/protocol";
+/** @depricated Use the new name HttpProtocol. */
+export { HttpProtocol as RestHandler } from "./protocol/http";
+/** @depricated Use the new name WebsocketProtocol. */
+export { WebsocketProtocol as WebsocketHandler } from "./protocol/websocket";
+/** @depricated Use the new name RequestHandler. */
+export { RequestHandler as ActionHandler } from "./core/requesthandler";

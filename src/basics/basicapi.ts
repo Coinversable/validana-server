@@ -1,4 +1,4 @@
-/**
+/*!
  * @license
  * Copyright Coinversable B.V. All Rights Reserved.
  *
@@ -7,11 +7,11 @@
  */
 
 /**
- * Some basic requests, recommended for any actionhandler:
+ * Some basic requests, recommended for any RequestHandler:
  * Process: ProcessRequest, no data
- * Contracts: no request data, Contract[]
+ * Contracts: no request data | string, Contract[]
  * Transaction: TxRequest, TxResponseOrPush | undefined, may result in pushtransaction: Transaction with data TxResponseOrPush
- * TxStatus: TxRequest, string | undefined, may result in pushtransaction: Transaction with data TxResponseOrPush
+ * TxStatus: TxRequest, TxStatusResponse, may result in pushtransaction: Transaction with data TxResponseOrPush
  * Time: no request data, number | undefined
  */
 export enum BasicRequestTypes {
@@ -19,7 +19,8 @@ export enum BasicRequestTypes {
 	Contracts = "contracts",
 	Transaction = "transaction",
 	TxStatus = "txStatus",
-	Time = "time"
+	Time = "time",
+	Metrics = "metrics"
 }
 
 /**
@@ -36,13 +37,21 @@ export type ReponseData = Contract[] | TxResponseOrPush | undefined;
 export type PushData = TxResponseOrPush;
 
 export interface ProcessRequest {
-	base64tx: string; //The actual transaction (in base64 format)
-	createTs?: number; //Optional info about when it was created
+	/** The transaction (in base64 format, same as transaction inside a block) */
+	base64tx: string;
+	/** Optional info about when it was created. */
+	createTs?: number;
+	/** Do not return till the transation has been processed. In this case the status code will be 200/422 depending on the result. */
+	wait?: boolean;
 }
 
 export interface TxRequest {
-	txId: string; //transactionId (hex)
-	push?: boolean; //If the transaction does not exist, do you want to receive a push message once it does? (websocket only)
+	/** Transaction id(s) (hex) */
+	txId: string | string[];
+	/** Return what is available. Send the rest as a push message when they are? (websocket only) */
+	push?: boolean;
+	/** Do not return till everything is available? If true 'push' will be ignored. */
+	wait?: boolean;
 }
 
 export interface Contract {
@@ -53,12 +62,22 @@ export interface Contract {
 	template: {
 		[fieldType: string]: FieldType;
 	};
+	validanaVersion: number;
 }
 
 export interface FieldType {
 	type: string; //Field Type
-	description: string; //Field suggested description
+	desc: string; //Field suggested description
 	name: string; //Field suggested name
+}
+
+export type TxStatusResponse = string | undefined | TxStatusesResponse[];
+export type TxResponse = TxResponseOrPush | undefined | TxResponseOrPush[];
+
+export interface TxStatusesResponse {
+	id: string;
+	status: string;
+	message: string;
 }
 
 export interface TxResponseOrPush {
@@ -67,11 +86,11 @@ export interface TxResponseOrPush {
 	version: number;
 	contractHash: string;
 	validTill: number;
-	payload: string;
+	payload: any;
 	publicKey: string;
 	signature: string;
 	status: string;
-	createTs?: number | null;
+	createTs?: number;
 	//Processed transaction info (if valid)
 	sender: string | null;
 	contractType: string | null;
@@ -81,6 +100,4 @@ export interface TxResponseOrPush {
 	processedTs: number | null;
 	//Optional info once processed
 	receiver: string | null;
-	extra1: string | null;
-	extra2: string | null;
 }

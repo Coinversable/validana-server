@@ -84,7 +84,9 @@
 		],
 		//Avoid common mistakes
 		"strict-boolean-expressions": true,
-		//Even if the parameters can be unified the documenation may differ.
-		"unified-signatures": false
+		//Even if the parameters can be unified the documentation may differ.
+		"unified-signatures": false,
+		//new Class() is not unused if the class does something on its own (e.g. start a server)
+		"no-unused-expression": [true, "allow-new"]
 	}
 }
