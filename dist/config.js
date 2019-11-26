@@ -191,6 +191,7 @@ class Config {
         }
     }
 }
+exports.Config = Config;
 Config.config = undefined;
 Config.validators = new Array();
 Config.stringConfig = {
@@ -216,5 +217,4 @@ Config.numberConfig = {
 Config.booleanConfig = {
     VSERVER_TLS: true
 };
-exports.Config = Config;
 //# sourceMappingURL=config.js.map

@@ -147,7 +147,7 @@ class Crypto {
         return result;
     }
 }
+exports.Crypto = Crypto;
 Crypto.base58chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 Crypto.base58map = Object.keys(Crypto.base58chars).reduce((obj, key) => (obj[Crypto.base58chars[Number.parseInt(key)]] = Number.parseInt(key), obj), {});
-exports.Crypto = Crypto;
 //# sourceMappingURL=crypto.js.map

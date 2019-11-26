@@ -24,7 +24,7 @@ export class Log {
 	private static reportErrors: boolean = false;
 	public static options: Raven.CaptureOptions = {
 		tags: {
-			serverVersion: "1.0.0",
+			serverVersion: "1.0.1",
 			nodejsVersion: process.versions.node,
 			arch: process.arch,
 			platform: process.platform,
