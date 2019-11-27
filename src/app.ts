@@ -293,7 +293,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 		//Use dedicated connection to avoid using up pool slots.
 		const connection = Database.get().getDedicatedConnection();
 		//If something goes wrong reconnect in a moment.
-		connection.on("end", () => setTimeout(() => listenNewBlocks, 5000));
+		connection.on("end", () => setTimeout(() => listenNewBlocks(), 5000));
 		//When a new block is processed:
 		connection.on("notification", async (message) => {
 			const payload: { block?: number, ts: number, txs?: number, other: number } = JSON.parse(message.payload!);

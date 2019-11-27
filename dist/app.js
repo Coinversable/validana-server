@@ -235,7 +235,7 @@ function start(requestHandlers = new Map()) {
     }
     async function listenNewBlocks() {
         const connection = database_1.Database.get().getDedicatedConnection();
-        connection.on("end", () => setTimeout(() => listenNewBlocks, 5000));
+        connection.on("end", () => setTimeout(() => listenNewBlocks(), 5000));
         connection.on("notification", async (message) => {
             const payload = JSON.parse(message.payload);
             if ((payload.txs !== undefined && payload.txs > 0 || payload.other !== 0) && (events_1.ServerEventEmitter.get("transactionId").hasSubscribers() ||
