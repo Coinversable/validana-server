@@ -1,6 +1,6 @@
 {
 	"name": "@coinversable/validana-server",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"description": "The Validana server for handling client requests.",
 	"author": "Coinversable BV",
 	"homepage": "https://validana.io/",
