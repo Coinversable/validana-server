@@ -19,6 +19,8 @@ export class ServerEventEmitter<T = any> {
 
 	/** Get an event emitter for a transactions. */
 	public static get(eventType: "transactionId" | "transactionAddress" | "transactionContract" | "transaction"): ServerEventEmitter<DBTransaction>;
+	/** Get an event emittor for a notifications. Send a notification using Database.get().notify(subtype, data). */
+	public static get(eventType: "notification"): ServerEventEmitter<any>;
 	/** Get an event emitter for a certain type of events. */
 	public static get(eventType: string): ServerEventEmitter;
 	public static get(eventType: string): ServerEventEmitter {
@@ -56,7 +58,7 @@ export class ServerEventEmitter<T = any> {
 	 * @param subtype The subtype to subscribe for. If this type of event emitter doesn't have subtype leave it empty.
 	 */
 	public subscribe(message: Message | undefined, subscriber: (data: T) => void, subtype?: string): void {
-		const connection = message === undefined ? undefined : message.response instanceof WebSocket ? message.response : message.response.connection;
+		const connection = message === undefined ? undefined : message.response instanceof WebSocket ? message.response : message.response.socket!;
 		const connections = this.subtypeToConnection.get(subtype);
 		if (connections === undefined) {
 			this.subtypeToConnection.set(subtype, [[connection, subscriber]]);
@@ -134,14 +136,14 @@ export class ServerEventGenerator {
 	 * @param action The action to perform
 	 * @param frequency The frequency (in milliseconds)
 	 */
-	constructor(action: () => void, frequency: number) {
+	constructor(action: () => Promise<void>, frequency: number) {
 		this.frequency = frequency;
 		//Run once, then every interval
 		setTimeout(() => this.run(action), 0);
 		this.interval = setInterval(() => this.run(action), frequency);
 	}
 
-	public async run(action: () => void): Promise<void> {
+	public async run(action: () => Promise<void>): Promise<void> {
 		if (this.running !== 0) {
 			Log.warn(`Backend under heavy load, was still running ${this.running} times in a row.`);
 			if (this.running > 3 && this.frequency * this.running > 30000) { //Fail at least 3 times and 30 seconds long

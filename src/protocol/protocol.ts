@@ -62,6 +62,7 @@ export abstract class Protocol {
 			for (const apiName of Object.keys(apis)) {
 				if (!requestHandlers.has(apiName.toLowerCase())) {
 					//Require the file, which should have a default exported class that extends RequestHandler.
+					//eslint-disable-next-line @typescript-eslint/no-var-requires
 					const apiFile = require(Path.resolve(apis[apiName]));
 					//Map the api name to the constructor of the exported class
 					requestHandlers.set(apiName.toLowerCase(), new apiFile.default());

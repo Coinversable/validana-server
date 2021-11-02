@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.RequestHandler = void 0;
 const events_1 = require("events");
 class RequestHandler extends events_1.EventEmitter {
     constructor(..._) {

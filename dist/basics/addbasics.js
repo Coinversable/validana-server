@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.addBasics = void 0;
 const Encryption = require("crypto");
 const validana_core_1 = require("@coinversable/validana-core");
 const database_1 = require("../core/database");
@@ -71,7 +72,7 @@ function addBasics(Extend) {
                     tx.getPayloadBinary().toString(),
                     tx.getSignature(),
                     tx.getPublicKeyBuffer(),
-                    (_a = data.createTs, (_a !== null && _a !== void 0 ? _a : 0))
+                    (_a = data.createTs) !== null && _a !== void 0 ? _a : 0
                 ];
                 try {
                     await database_1.Database.get().query(Basics.storeTransaction, params);
@@ -90,7 +91,7 @@ function addBasics(Extend) {
                         events_1.ServerEventEmitter.get("transactionId").subscribe(message, (processedTx) => {
                             message.latencyStart = undefined;
                             if (processedTx.status === "accepted") {
-                                resolve();
+                                resolve(this.dbTxToTxResponse(processedTx));
                             }
                             else {
                                 message.statusCode = 422;
@@ -156,7 +157,12 @@ function addBasics(Extend) {
                     for (const id of ids) {
                         events_1.ServerEventEmitter.get("transactionId").subscribe(message, (processedTx) => {
                             const subResult = { id: validana_core_1.Crypto.binaryToHex(processedTx.transaction_id), status: processedTx.status, message: processedTx.message };
-                            sendPush ? message.protocol.sendPush(message, basicapi_1.BasicPushTypes.Transaction, subResult) : result.push(subResult);
+                            if (sendPush) {
+                                message.protocol.sendPush(message, basicapi_1.BasicPushTypes.Transaction, subResult);
+                            }
+                            else {
+                                result.push(subResult);
+                            }
                         }, id);
                     }
                 }
@@ -222,7 +228,12 @@ function addBasics(Extend) {
                     for (const id of ids) {
                         events_1.ServerEventEmitter.get("transactionId").subscribe(message, (processedTx) => {
                             const subResult = this.dbTxToTxResponse(processedTx);
-                            sendPush ? message.protocol.sendPush(message, basicapi_1.BasicPushTypes.Transaction, subResult) : result.push(subResult);
+                            if (sendPush) {
+                                message.protocol.sendPush(message, basicapi_1.BasicPushTypes.Transaction, subResult);
+                            }
+                            else {
+                                result.push(subResult);
+                            }
                         }, id);
                     }
                 }
@@ -297,7 +308,10 @@ function addBasics(Extend) {
                     }
                 }
                 catch (error) {
-                    validana_core_1.Log.error("Unable to retrieve metrics.", error);
+                    if (!error.message.includes("Connection terminated due to connection timeout") &&
+                        !error.message.includes("timeout exceeded when trying to connect")) {
+                        validana_core_1.Log.error("Unable to retrieve metrics.", error);
+                    }
                     return Promise.reject("Unable to retrieve metrics.");
                 }
             }

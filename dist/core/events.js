@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ServerEventGenerator = exports.ServerEventEmitter = void 0;
 const validana_core_1 = require("@coinversable/validana-core");
 const WebSocket = require("ws");
 class ServerEventEmitter {
@@ -28,8 +29,7 @@ class ServerEventEmitter {
         }
     }
     subscribe(message, subscriber, subtype) {
-        var _a;
-        const connection = message === undefined ? undefined : message.response instanceof WebSocket ? message.response : message.response.connection;
+        const connection = message === undefined ? undefined : message.response instanceof WebSocket ? message.response : message.response.socket;
         const connections = this.subtypeToConnection.get(subtype);
         if (connections === undefined) {
             this.subtypeToConnection.set(subtype, [[connection, subscriber]]);
@@ -37,7 +37,7 @@ class ServerEventEmitter {
         else {
             connections.push([connection, subscriber]);
         }
-        (_a = connection) === null || _a === void 0 ? void 0 : _a.on("close", () => this.unsubscribe(message, subtype));
+        connection === null || connection === void 0 ? void 0 : connection.on("close", () => this.unsubscribe(message, subtype));
     }
     emit(data, subtype) {
         const connections = this.subtypeToConnection.get(subtype);
@@ -75,7 +75,7 @@ class ServerEventEmitter {
             return total;
         }
         else {
-            return _b = (_a = this.subtypeToConnection.get(subtype)) === null || _a === void 0 ? void 0 : _a.length, (_b !== null && _b !== void 0 ? _b : 0);
+            return (_b = (_a = this.subtypeToConnection.get(subtype)) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0;
         }
     }
     getSubtypesSize() {

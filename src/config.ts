@@ -6,10 +6,12 @@
  * found in the LICENSE file at https://validana.io/license
  */
 
-import * as Cluster from "cluster";
 import * as FS from "fs";
 import * as Path from "path";
 import { Log, Crypto } from "@coinversable/validana-core";
+import { Cluster as ClusterType } from "cluster";
+// eslint-disable-next-line
+const Cluster: ClusterType = require("cluster");
 
 /** The config for the backend. Using all capitalized names because this is the standard for environment variables. */
 export interface ConfigValues {
@@ -59,7 +61,7 @@ export class Config {
 	private static config: { [key: string]: any } = {};
 	private static loadedConfig = false;
 
-	public static get<T extends {} = {}>(): Readonly<ConfigValues & T> {
+	public static get<T extends object = object>(): Readonly<ConfigValues & T> {
 		if (!Config.loadedConfig) {
 			Config.loadEnv();
 			if (Cluster.isMaster) {
@@ -80,13 +82,13 @@ export class Config {
 	 * @param defaultValue Default value for the variable
 	 * @param validator The validator. It should throw an error if it is not valid.
 	 */
-	public static addStringConfig<T extends {} = {}>(name: string, defaultValue: string,
+	public static addStringConfig<T extends object = object>(name: string, defaultValue: string,
 		validator?: (input: string, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addStringConfig<T extends {} = {}>(name: string, defaultValue?: undefined,
+	public static addStringConfig<T extends object = object>(name: string, defaultValue?: undefined,
 		validator?: (input: string | undefined, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addStringConfig<T extends {} = {}>(name: RegExp,
+	public static addStringConfig<T extends object = object>(name: RegExp,
 		validator?: (input: string, config: ConfigValues & T, key: string) => void): typeof Config;
-	// tslint:disable-next-line: ban-types
+	//eslint-disable-next-line @typescript-eslint/ban-types
 	public static addStringConfig(name: string | RegExp, defaultValue?: string | Function, validator?: Function): typeof Config {
 		if (typeof defaultValue === "function") {
 			validator = defaultValue;
@@ -97,7 +99,7 @@ export class Config {
 		} else {
 			Config.toLoadRegExp.set(name, { type: "string", validator: validator as any });
 		}
-		return Config as typeof Config;
+		return Config;
 	}
 
 	/**
@@ -106,13 +108,13 @@ export class Config {
 	 * @param defaultValue Default value for the variable
 	 * @param validator The validator. It should throw an error if it is not valid.
 	 */
-	public static addNumberConfig<T extends {} = {}>(name: string, defaultValue: number,
+	public static addNumberConfig<T extends object = object>(name: string, defaultValue: number,
 		validator?: (input: number, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addNumberConfig<T extends {} = {}>(name: string, defaultValue?: undefined,
+	public static addNumberConfig<T extends object = object>(name: string, defaultValue?: undefined,
 		validator?: (input: number | undefined, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addNumberConfig<T extends {} = {}>(name: RegExp,
+	public static addNumberConfig<T extends object = object>(name: RegExp,
 		validator?: (input: number, config: ConfigValues & T, key: string) => void): typeof Config;
-	// tslint:disable-next-line: ban-types
+	//eslint-disable-next-line @typescript-eslint/ban-types
 	public static addNumberConfig(name: string | RegExp, defaultValue?: number | Function, validator?: Function): typeof Config {
 		if (typeof defaultValue === "function") {
 			validator = defaultValue;
@@ -122,7 +124,7 @@ export class Config {
 		} else {
 			Config.toLoadRegExp.set(name, { type: "number", validator: validator as any });
 		}
-		return Config as typeof Config;
+		return Config;
 	}
 
 	/**
@@ -131,13 +133,13 @@ export class Config {
 	 * @param defaultValue Default value for the variable
 	 * @param validator The validator. It should throw an error if it is not valid.
 	 */
-	public static addBoolConfig<T extends {} = {}>(name: string, defaultValue: boolean,
+	public static addBoolConfig<T extends object = object>(name: string, defaultValue: boolean,
 		validator?: (input: boolean, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addBoolConfig<T extends {} = {}>(name: string, defaultValue?: undefined,
+	public static addBoolConfig<T extends object = object>(name: string, defaultValue?: undefined,
 		validator?: (input: boolean | undefined, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addBoolConfig<T extends {} = {}>(name: RegExp,
+	public static addBoolConfig<T extends object = object>(name: RegExp,
 		validator?: (input: boolean, config: ConfigValues & T, key: string) => void): typeof Config;
-	// tslint:disable-next-line: ban-types
+	//eslint-disable-next-line @typescript-eslint/ban-types
 	public static addBoolConfig(name: string | RegExp, defaultValue?: boolean | Function, validator?: Function): typeof Config {
 		if (typeof defaultValue === "function") {
 			validator = defaultValue;
@@ -147,7 +149,7 @@ export class Config {
 		} else {
 			Config.toLoadRegExp.set(name, { type: "boolean", validator: validator as any });
 		}
-		return Config as typeof Config;
+		return Config;
 	}
 
 	/**
@@ -156,13 +158,13 @@ export class Config {
 	 * @param defaultValue Default value for the variable
 	 * @param validator The validator. It should throw an error if it is not valid.
 	 */
-	public static addObjectConfig<T extends {} = {}>(name: string, defaultValue: object,
+	public static addObjectConfig<T extends object = object>(name: string, defaultValue: object,
 		validator?: (input: object, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addObjectConfig<T extends {} = {}>(name: string, defaultValue?: undefined,
+	public static addObjectConfig<T extends object = object>(name: string, defaultValue?: undefined,
 		validator?: (input: boolean | undefined, config: ConfigValues & T, key: string) => void): typeof Config;
-	public static addObjectConfig<T extends {} = {}>(name: RegExp,
+	public static addObjectConfig<T extends object = object>(name: RegExp,
 		validator?: (input: object, config: ConfigValues & T, key: string) => void): typeof Config;
-	// tslint:disable-next-line: ban-types
+	//eslint-disable-next-line @typescript-eslint/ban-types
 	public static addObjectConfig(name: string | RegExp, defaultValue?: object | Function, validator?: Function): typeof Config {
 		if (typeof defaultValue === "function") {
 			validator = defaultValue;
@@ -173,7 +175,7 @@ export class Config {
 		} else {
 			Config.toLoadRegExp.set(name, { type: "object", validator: validator as any });
 		}
-		return Config as typeof Config;
+		return Config;
 	}
 
 	/** Load all keys from the environment variables. */
@@ -378,6 +380,7 @@ Config.addStringConfig("VSERVER_API", undefined, (value) => {
 		for (const apiName of Object.keys(apis)) {
 			let isDefaultExport = false;
 			try {
+				//eslint-disable-next-line @typescript-eslint/no-var-requires
 				if (typeof (require(Path.resolve(apis[apiName])).default) === "function") {
 					isDefaultExport = true;
 				}

@@ -6,8 +6,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 
-import { Crypto, Log, c, Transaction, Block, PrivateKey, PublicKey } from "@coinversable/validana-core";
-export { Crypto, Log, c, Transaction, Block, PrivateKey, PublicKey };
+export { Crypto, Log, c, Transaction, Block, PrivateKey, PublicKey } from "@coinversable/validana-core";
 
 export { Protocol, Message } from "./protocol/protocol";
 export { HttpProtocol } from "./protocol/http";

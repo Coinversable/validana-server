@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.TransactionStatus = exports.Database = void 0;
 const validana_core_1 = require("@coinversable/validana-core");
 const pg_1 = require("pg");
 const events_1 = require("events");
@@ -62,9 +63,15 @@ class Database extends events_1.EventEmitter {
     }
     async query(query, values) {
         if (this.pool === undefined) {
-            return Promise.reject(new Error("Database must be setup and active before you can query it."));
+            throw new Error("Database must be setup and active before you can query it.");
         }
         return this.pool.query(query, values);
+    }
+    async notify(type, data) {
+        if (this.pool === undefined) {
+            throw new Error("Database must be setup and active before you can send notifications.");
+        }
+        return this.pool.query(`SELECT pg_notify('validana_notification', $1);`, [JSON.stringify({ data, type })]);
     }
     async getConnection() {
         if (this.pool === undefined) {

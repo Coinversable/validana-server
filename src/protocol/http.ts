@@ -62,7 +62,7 @@ export class HttpProtocol extends Protocol {
 
 		this.httpServer.server.on("connection", (socket) => socket.setTimeout(120000, () => socket.destroy()));
 
-		this.httpServer.server.on("request", async (request: http.IncomingMessage, response: http.ServerResponse) => {
+		this.httpServer.server.on("request", (request: http.IncomingMessage, response: http.ServerResponse) => {
 			//Remove timeout now request has come in.
 			request.socket.setTimeout(0);
 			//Add to list of active connections (due to keepalive, a request may reuse the same socket)
@@ -161,10 +161,13 @@ export class HttpProtocol extends Protocol {
 						try {
 							data = JSON.parse(body);
 						} catch (error) {
-							Metrics.stats.requestsClientErrorresponset++;
-							response.writeHead(400, HttpProtocol.headerOptionsFailed);
-							response.end("Invalid request json.");
-							return;
+							if (body.indexOf("=") !== -1) {
+								//data=something&data2=something2&data3=something2 format (only string/string[] is supported)
+								data = querystring.parse(body);
+							} else {
+								//something format (only string is supported)
+								data = body;
+							}
 						}
 					}
 
@@ -195,7 +198,7 @@ export class HttpProtocol extends Protocol {
 		} catch (error) {
 			//Differentiate between internal errors and rejects caused by bad client requests/other info.
 			if (error instanceof Error) {
-				Log.warn("Request data that resulted in error: " + data);
+				Log.warn("Request data that resulted in error: " + dataString);
 				Log.error(`Error occured during request of type ${message.version}:${type}.`, error);
 				//Do not send actual error message for safety.
 				this.sendError(message, "Error occured during request.");
@@ -249,7 +252,7 @@ export class HttpProtocol extends Protocol {
 		}
 	}
 
-	public sendPush(_: Message, pushType: string, data: {}): void {
+	public sendPush(_: Message, pushType: string, data: any): void {
 		//Do nothing, we don't support pushes.
 		const dataString = JSON.stringify(data);
 		Log.warn(`Push type: ${pushType}, pushData: ${dataString === undefined ? dataString : dataString.slice(0, 2000)}`);

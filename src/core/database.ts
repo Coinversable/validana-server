@@ -52,7 +52,7 @@ export class Database extends EventEmitter {
 			this.dbSetup = setup;
 			this.pool = new Pool(this.dbSetup).on("error", (error) => {
 				if (this.dbSetup!.password !== undefined) {
-					error.message = error.message.replace(new RegExp(this.dbSetup!.password, "g"), "");
+					error.message = error.message.replace(new RegExp(this.dbSetup!.password as string, "g"), "");
 				}
 				Log.warn("Problem with database connection.", error);
 			});
@@ -101,9 +101,22 @@ export class Database extends EventEmitter {
 	 */
 	public async query(query: QueryConfig | string, values?: any[]): Promise<QueryResult> {
 		if (this.pool === undefined) {
-			return Promise.reject(new Error("Database must be setup and active before you can query it."));
+			throw new Error("Database must be setup and active before you can query it.");
 		}
 		return this.pool.query(query, values);
+	}
+
+	/**
+	 * Send a notification to all connected servers/threads.
+	 * You can subscribe to these notifications using ServerEventEmitter.get("notification").subscribe() with 'type' as subtype.
+	 * @param type The type of notification.
+	 * @param data The message to send in the notification.
+	 */
+	 public async notify(type: string, data: any) {
+		if (this.pool === undefined) {
+			throw new Error("Database must be setup and active before you can send notifications.");
+		}
+		return this.pool.query(`SELECT pg_notify('validana_notification', $1);`, [JSON.stringify({ data, type })]);
 	}
 
 	/**
@@ -129,7 +142,7 @@ export class Database extends EventEmitter {
 		}
 		const client = new Client(this.dbSetup).on("error", (error) => {
 			if (this.dbSetup!.password !== undefined) {
-				error.message = error.message.replace(new RegExp(this.dbSetup!.password, "g"), "");
+				error.message = error.message.replace(new RegExp(this.dbSetup!.password as string, "g"), "");
 			}
 			Log.warn("Problem with database connection.", error);
 		});
@@ -151,8 +164,7 @@ export class Database extends EventEmitter {
 		return name;
 	}
 
-	public on(event: "setup", listener: () => void): this;
-	public on(event: "destroy", listener: () => void): this;
+	public on(event: "setup" | "destroy", listener: () => void): this;
 	public on(event: string | symbol, listener: (...args: any[]) => void): this;
 	public on(event: string | symbol, listener: (...args: any[]) => void): this {
 		return super.on(event, listener);

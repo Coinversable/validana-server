@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.HttpServer = void 0;
 const http = require("http");
 const https = require("https");
 const FS = require("fs");
@@ -65,7 +66,7 @@ class HttpServer extends events_1.EventEmitter {
     }
     async shutdown(permanent, graceful) {
         this.permanentlyClosed = this.permanentlyClosed || permanent;
-        this.server.close();
+        await new Promise((resolve) => this.server.close(resolve));
         this.emit("close", permanent, graceful);
     }
     loadCertificate() {

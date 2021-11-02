@@ -9,6 +9,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const requesthandler_1 = require("../core/requesthandler");
 const addbasics_1 = require("./addbasics");
-class BasicHandler extends addbasics_1.addBasics(requesthandler_1.RequestHandler) {
+class BasicHandler extends (0, addbasics_1.addBasics)(requesthandler_1.RequestHandler) {
 }
 exports.default = BasicHandler;

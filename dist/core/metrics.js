@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Metrics = void 0;
 const config_1 = require("../config");
 const database_1 = require("./database");
 const OS = require("os");
@@ -40,9 +41,7 @@ class Metrics {
         if (!Metrics.syncedOnce) {
             throw new Error("No metrics gathered yet, please try again in a moment.");
         }
-        let currentMetrics;
-        let totalMetrics;
-        [currentMetrics, totalMetrics] = await Promise.all([
+        const [currentMetrics, totalMetrics] = await Promise.all([
             Metrics.database.query("SELECT metric, jsonb_agg(value) AS value FROM basics.metrics WHERE worker != -1 GROUP BY metric;", []),
             Metrics.database.query("SELECT metric, value FROM basics.metrics WHERE worker = -1;", [])
         ]);

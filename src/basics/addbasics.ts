@@ -24,7 +24,6 @@ import { Message } from "../protocol/protocol";
  * This is basically the same as 'export class Basics extends RequestHandler', except we can choose
  *  what subclass of RequestHandler we want to apply this to, allowing us to create modules.
  */
-// tslint:disable-next-line:typedef Let typescript determine the type...
 export function addBasics<T extends new (...args: any[]) => RequestHandler>(Extend: T) {
 	return class Basics extends Extend {
 		/** Get all contracts. */
@@ -86,7 +85,7 @@ export function addBasics<T extends new (...args: any[]) => RequestHandler>(Exte
 		}
 
 		/** We were requested to process a new transaction from the client. */
-		protected async processMessage(data: ProcessRequest, message: Message): Promise<void> {
+		protected async processMessage(data: ProcessRequest, message: Message): Promise<TxResponseOrPush | undefined> {
 			//Check if all required arguments are there and correct
 			if (typeof data !== "object" || data === null || (data.createTs !== undefined && !Number.isSafeInteger(data.createTs)) ||
 				typeof data.base64tx !== "string" || !Crypto.isBase64(data.base64tx)) {
@@ -130,7 +129,7 @@ export function addBasics<T extends new (...args: any[]) => RequestHandler>(Exte
 					ServerEventEmitter.get("transactionId").subscribe(message, (processedTx) => {
 						message.latencyStart = undefined;
 						if (processedTx.status === "accepted") {
-							resolve();
+							resolve(this.dbTxToTxResponse(processedTx));
 						} else {
 							message.statusCode = 422;
 							reject(processedTx.message);
@@ -205,7 +204,11 @@ export function addBasics<T extends new (...args: any[]) => RequestHandler>(Exte
 					//We send a push notification each time a new transaction completes
 					ServerEventEmitter.get("transactionId").subscribe(message, (processedTx) => {
 						const subResult = { id: Crypto.binaryToHex(processedTx.transaction_id), status: processedTx.status, message: processedTx.message! };
-						sendPush ? message.protocol.sendPush(message, BasicPushTypes.Transaction, subResult) : result.push(subResult);
+						if (sendPush) {
+							message.protocol.sendPush(message, BasicPushTypes.Transaction, subResult);
+						} else {
+							result.push(subResult);
+						}
 					}, id);
 				}
 			}
@@ -285,7 +288,11 @@ export function addBasics<T extends new (...args: any[]) => RequestHandler>(Exte
 					//We send a push notification each time a new transaction completes
 					ServerEventEmitter.get("transactionId").subscribe(message, (processedTx) => {
 						const subResult = this.dbTxToTxResponse(processedTx);
-						sendPush ? message.protocol.sendPush(message, BasicPushTypes.Transaction, subResult) : result.push(subResult);
+						if (sendPush) {
+							message.protocol.sendPush(message, BasicPushTypes.Transaction, subResult);
+						} else {
+							result.push(subResult);
+						}
 					}, id);
 				}
 			}
@@ -372,7 +379,10 @@ export function addBasics<T extends new (...args: any[]) => RequestHandler>(Exte
 					return await Metrics.export(data.format);
 				}
 			} catch (error) {
-				Log.error("Unable to retrieve metrics.", error);
+				if (!(error as Error).message.includes("Connection terminated due to connection timeout") &&
+					!(error as Error).message.includes("timeout exceeded when trying to connect")) {
+					Log.error("Unable to retrieve metrics.", error);
+				}
 				return Promise.reject("Unable to retrieve metrics.");
 			}
 		}

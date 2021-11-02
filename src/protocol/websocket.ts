@@ -25,7 +25,7 @@ class ExtendedWebSocket extends WebSocket {
 interface RequestMessage {
 	type: string;
 	id: string;
-	data?: {};
+	data?: any;
 }
 
 /** Interface for responding. */
@@ -84,7 +84,7 @@ export class WebsocketProtocol extends Protocol {
 		this.wsServer = new WebSocket.Server(this.serverOptions);
 
 		//Every second check for 1/timeout number of clients if they are still alive, for an average of once per timeout for each client.
-		let currentTimer = this.timeout!;
+		let currentTimer = this.timeout;
 		let clientsToCheck: ExtendedWebSocket[] = [];
 		const interval = setInterval(() => {
 			if (this.httpServer.server.listening) {
@@ -186,7 +186,7 @@ export class WebsocketProtocol extends Protocol {
 			//The client send a message.
 			client.on("message", async (requestData: WebSocket.Data) => {
 				const message: Message<WebSocket> = {
-					log: true, protocol: this, request, version: version!, latencyStart: Date.now(), response: client, session
+					log: true, protocol: this, request, version, latencyStart: Date.now(), response: client, session
 				};
 
 				//If the request is not valid json.
@@ -268,7 +268,7 @@ export class WebsocketProtocol extends Protocol {
 
 			//Log and send the response
 			if (message.log) {
-				Log.debug(`Send response: ${responseString.slice(0, 2000)} `);
+				Log.debug(`Send response: ${responseString.slice(0, 2000)}`);
 			}
 			message.response.send(responseString);
 		} else {
@@ -276,7 +276,7 @@ export class WebsocketProtocol extends Protocol {
 		}
 	}
 
-	public sendPush(message: Message<WebSocket>, pushType: string, data: {}): void {
+	public sendPush(message: Message<WebSocket>, pushType: string, data: any): void {
 		if (message.response.readyState === WebSocket.OPEN) {
 			const pushString = JSON.stringify({
 				pushType,

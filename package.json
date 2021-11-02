@@ -1,6 +1,6 @@
 {
 	"name": "@coinversable/validana-server",
-	"version": "2.1.1",
+	"version": "2.2.0",
 	"description": "The Validana server for handling client requests.",
 	"author": "Coinversable BV",
 	"homepage": "https://validana.io/",
@@ -20,24 +20,26 @@
 	"scripts": {
 		"build": "tsc",
 		"start": "node -e \"require('./dist/index.js').start(new Map().set('v1',new (require('./dist/basics/basichandler.js').default)()))\" dist/index.js",
-		"tslint": "tslint --project tsconfig.json -c tslint.json",
-		"keys": "node --no-warnings -e \"const PK = require('@coinversable/validana-core').PrivateKey; const key = process.argv[1] ? PK.fromWIF(process.argv[1]) : PK.generate(); console.log(key.toWIF(), key.publicKey.toString('hex'), key.getAddress())\"",
-		"keysjson": "node --no-warnings -pe \"const PK = require('@coinversable/validana-core').PrivateKey; const key = process.argv[1] ? PK.fromWIF(process.argv[1]) : PK.generate(); JSON.stringify({privateKey: key.toWIF(), publicKey: key.publicKey.toString('hex'), address: key.getAddress()})\""
+		"lint": "eslint .",
+		"keys": "node --no-warnings -e \"const PK = require('validana-core').PrivateKey; const key = process.argv[1] ? PK.fromWIF(process.argv[1]) : PK.generate(); console.log(key.toWIF(), key.publicKey.toString('hex'), key.getAddress())\"",
+		"keysjson": "node --no-warnings -pe \"const PK = require('validana-core').PrivateKey; const key = process.argv[1] ? PK.fromWIF(process.argv[1]) : PK.generate(); JSON.stringify({privateKey: key.toWIF(), publicKey: key.publicKey.toString('hex'), address: key.getAddress()})\""
 	},
 	"files": [
-		"dist",
-		"src"
+		"dist"
 	],
 	"dependencies": {
-		"@coinversable/validana-core": "^2.0.1",
-		"@types/node": "*",
-		"@types/pg": "^7.4.9",
-		"@types/ws": "^6.0.0",
-		"pg": "^7.4.1",
-		"ws": "^7.0.0"
+		"@coinversable/validana-core": "^2.0.2",
+		"@types/node": "^16.11.6",
+		"@types/pg": "^8.6.1",
+		"@types/ws": "^8.2.0",
+		"pg": "^8.2.1",
+		"ws": "^8.2.3"
 	},
 	"devDependencies": {
-		"typescript":"^3.7.0",
-		"tslint": "^5.0.0"
+		"@typescript-eslint/eslint-plugin": "^5.2.0",
+		"@typescript-eslint/parser": "^5.2.0",
+		"eslint": "^8.1.0",
+		"eslint-plugin-jsdoc": "^37.0.3",
+		"typescript": "^4.4.0"
 	}
 }

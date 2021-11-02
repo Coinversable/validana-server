@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebsocketProtocol = void 0;
 const WebSocket = require("ws");
 const validana_core_1 = require("@coinversable/validana-core");
 const config_1 = require("../config");
@@ -122,7 +123,7 @@ class WebsocketProtocol extends protocol_1.Protocol {
             });
             client.on("message", async (requestData) => {
                 const message = {
-                    log: true, protocol: this, request, version: version, latencyStart: Date.now(), response: client, session
+                    log: true, protocol: this, request, version, latencyStart: Date.now(), response: client, session
                 };
                 const requestString = requestData instanceof Array ?
                     requestData.map((part) => part.toString()).join("") : requestData.toString();
@@ -176,7 +177,7 @@ class WebsocketProtocol extends protocol_1.Protocol {
     sendResponse(message, data) {
         var _a;
         if (message.response.readyState === WebSocket.OPEN) {
-            const statusCode = (_a = message.statusCode, (_a !== null && _a !== void 0 ? _a : 200));
+            const statusCode = (_a = message.statusCode) !== null && _a !== void 0 ? _a : 200;
             if (statusCode < 400) {
                 metrics_1.Metrics.stats.requestsSuccessWs++;
             }
@@ -192,7 +193,7 @@ class WebsocketProtocol extends protocol_1.Protocol {
                 data
             });
             if (message.log) {
-                validana_core_1.Log.debug(`Send response: ${responseString.slice(0, 2000)} `);
+                validana_core_1.Log.debug(`Send response: ${responseString.slice(0, 2000)}`);
             }
             message.response.send(responseString);
         }
@@ -201,15 +202,15 @@ class WebsocketProtocol extends protocol_1.Protocol {
         }
     }
     sendPush(message, pushType, data) {
-        var _a, _b;
+        var _a;
         if (message.response.readyState === WebSocket.OPEN) {
             const pushString = JSON.stringify({
                 pushType,
                 data,
-                status: (_a = message.statusCode, (_a !== null && _a !== void 0 ? _a : 200))
+                status: (_a = message.statusCode) !== null && _a !== void 0 ? _a : 200
             });
             if (message.log) {
-                validana_core_1.Log.debug(`Send push: ${(_b = pushString) === null || _b === void 0 ? void 0 : _b.slice(0, 2000)} `);
+                validana_core_1.Log.debug(`Send push: ${pushString === null || pushString === void 0 ? void 0 : pushString.slice(0, 2000)} `);
             }
             message.response.send(pushString);
         }
@@ -223,7 +224,7 @@ class WebsocketProtocol extends protocol_1.Protocol {
     sendError(message, error) {
         var _a;
         if (message.response.readyState === WebSocket.OPEN) {
-            const statusCode = (_a = message.statusCode, (_a !== null && _a !== void 0 ? _a : 500));
+            const statusCode = (_a = message.statusCode) !== null && _a !== void 0 ? _a : 500;
             if (statusCode >= 400 && statusCode < 500) {
                 metrics_1.Metrics.stats.requestsClientErrorWs++;
             }

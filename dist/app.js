@@ -7,7 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-const Cluster = require("cluster");
+exports.start = void 0;
 const OS = require("os");
 const validana_core_1 = require("@coinversable/validana-core");
 const http_1 = require("./protocol/http");
@@ -17,7 +17,9 @@ const config_1 = require("./config");
 const httpserver_1 = require("./core/httpserver");
 const events_1 = require("./core/events");
 const metrics_1 = require("./core/metrics");
-class ExtendedWorker extends Cluster.Worker {
+const cluster_1 = require("cluster");
+const Cluster = require("cluster");
+class ExtendedWorker extends cluster_1.Worker {
 }
 function start(requestHandlers = new Map()) {
     process.on("uncaughtException", async (error) => {
@@ -155,14 +157,15 @@ function start(requestHandlers = new Map()) {
         }
     }
     function setupWorker() {
-        Cluster.worker.on("error", (error) => {
+        const worker = Cluster.worker;
+        worker.on("error", (error) => {
             validana_core_1.Log.error("Worker encountered an error", error);
             process.exit(1);
         });
-        validana_core_1.Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) started`);
+        validana_core_1.Log.info(`Worker ${worker.id} (pid: ${process.pid}) started`);
         setInterval(() => {
             const memory = process.memoryUsage();
-            Cluster.worker.send({ type: "report", memory: (memory.heapTotal + memory.external) / 1024 / 1024 });
+            worker.send({ type: "report", memory: (memory.heapTotal + memory.external) / 1024 / 1024 });
         }, 5000);
         database_1.Database.get().setup({
             database: config_1.Config.get().VSERVER_DBNAME,
@@ -172,9 +175,10 @@ function start(requestHandlers = new Map()) {
             port: config_1.Config.get().VSERVER_DBPORT,
             min: config_1.Config.get().VSERVER_DBMINCONNECTIONS,
             max: config_1.Config.get().VSERVER_DBMAXCONNECTIONS,
-            connectionTimeoutMillis: 5000
+            connectionTimeoutMillis: 10000,
+            idleTimeoutMillis: 20000
         });
-        listenNewBlocks();
+        listenNotification();
         if (config_1.Config.get().VSERVER_METRICSINTERVAL !== 0) {
             const metricsEventGenerator = new events_1.ServerEventGenerator(metrics_1.Metrics.sync, config_1.Config.get().VSERVER_METRICSINTERVAL * 1000);
             database_1.Database.get().on("destroy", () => metricsEventGenerator.stop());
@@ -185,14 +189,13 @@ function start(requestHandlers = new Map()) {
             server = new httpserver_1.HttpServer(config_1.Config.get().VSERVER_HTTPPORT);
         }
         if (config_1.Config.get().VSERVER_HTTPPORT !== 0) {
-            protocols.push(new http_1.HttpProtocol(Cluster.worker, (server !== null && server !== void 0 ? server : config_1.Config.get().VSERVER_HTTPPORT), requestHandlers));
+            protocols.push(new http_1.HttpProtocol(worker, server !== null && server !== void 0 ? server : config_1.Config.get().VSERVER_HTTPPORT, requestHandlers));
         }
         if (config_1.Config.get().VSERVER_WSPORT !== 0) {
-            protocols.push(new websocket_1.WebsocketProtocol(Cluster.worker, (server !== null && server !== void 0 ? server : config_1.Config.get().VSERVER_WSPORT), requestHandlers));
+            protocols.push(new websocket_1.WebsocketProtocol(worker, server !== null && server !== void 0 ? server : config_1.Config.get().VSERVER_WSPORT, requestHandlers));
         }
-        Cluster.worker.on("message", async (message) => {
-            var _a;
-            validana_core_1.Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) received message: ${(_a = message) === null || _a === void 0 ? void 0 : _a.type}`);
+        worker.on("message", async (message) => {
+            validana_core_1.Log.info(`Worker ${worker.id} (pid: ${process.pid}) received message: ${message === null || message === void 0 ? void 0 : message.type}`);
             if (message.type === "shutdown" && typeof message.graceful === "boolean") {
                 if (!isShuttingDown) {
                     isShuttingDown = true;
@@ -207,7 +210,7 @@ function start(requestHandlers = new Map()) {
             }
         });
         process.on("SIGTERM", async () => {
-            validana_core_1.Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) received SIGTERM`);
+            validana_core_1.Log.info(`Worker ${worker.id} (pid: ${process.pid}) received SIGTERM`);
             if (!isShuttingDown) {
                 isShuttingDown = true;
                 const promises = [];
@@ -220,7 +223,7 @@ function start(requestHandlers = new Map()) {
             }
         });
         process.on("SIGINT", async () => {
-            validana_core_1.Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) received SIGINT`);
+            validana_core_1.Log.info(`Worker ${worker.id} (pid: ${process.pid}) received SIGINT`);
             if (!isShuttingDown) {
                 isShuttingDown = true;
                 const promises = [];
@@ -233,29 +236,41 @@ function start(requestHandlers = new Map()) {
             }
         });
     }
-    async function listenNewBlocks() {
+    async function listenNotification() {
+        if (isShuttingDown) {
+            return;
+        }
         const connection = database_1.Database.get().getDedicatedConnection();
-        connection.on("end", () => setTimeout(() => listenNewBlocks(), 5000));
+        connection.on("end", () => setTimeout(() => listenNotification(), 5000));
         connection.on("notification", async (message) => {
-            const payload = JSON.parse(message.payload);
-            if ((payload.txs !== undefined && payload.txs > 0 || payload.other !== 0) && (events_1.ServerEventEmitter.get("transactionId").hasSubscribers() ||
-                events_1.ServerEventEmitter.get("transaction").hasSubscribers() ||
-                events_1.ServerEventEmitter.get("transactionContract").hasSubscribers() ||
-                events_1.ServerEventEmitter.get("transactionAddress").hasSubscribers())) {
-                const result = await database_1.Database.get().query("SELECT * FROM basics.transactions WHERE processed_ts = $1;", [payload.ts]);
-                for (const row of result.rows) {
-                    events_1.ServerEventEmitter.get("transactionId").emit(row, row.transaction_id.toString("hex"));
-                    if (row.sender !== null) {
-                        events_1.ServerEventEmitter.get("transactionAddress").emit(row, row.sender);
+            if (message.channel === "blocks") {
+                const payload = JSON.parse(message.payload);
+                if ((payload.txs !== undefined && payload.txs > 0 || payload.other !== 0) && (events_1.ServerEventEmitter.get("transactionId").hasSubscribers() ||
+                    events_1.ServerEventEmitter.get("transaction").hasSubscribers() ||
+                    events_1.ServerEventEmitter.get("transactionContract").hasSubscribers() ||
+                    events_1.ServerEventEmitter.get("transactionAddress").hasSubscribers())) {
+                    const result = await database_1.Database.get().query("SELECT * FROM basics.transactions WHERE processed_ts = $1;", [payload.ts]);
+                    for (const row of result.rows) {
+                        events_1.ServerEventEmitter.get("transactionId").emit(row, row.transaction_id.toString("hex"));
+                        if (row.sender !== null) {
+                            events_1.ServerEventEmitter.get("transactionAddress").emit(row, row.sender);
+                        }
+                        if (row.receiver !== null) {
+                            events_1.ServerEventEmitter.get("transactionAddress").emit(row, row.receiver);
+                        }
+                        if (row.contract_type !== null) {
+                            events_1.ServerEventEmitter.get("transactionContract").emit(row, row.contract_type);
+                        }
+                        events_1.ServerEventEmitter.get("transaction").emit(row);
                     }
-                    if (row.receiver !== null) {
-                        events_1.ServerEventEmitter.get("transactionAddress").emit(row, row.receiver);
-                    }
-                    if (row.contract_type !== null) {
-                        events_1.ServerEventEmitter.get("transactionContract").emit(row, row.contract_type);
-                    }
-                    events_1.ServerEventEmitter.get("transaction").emit(row);
                 }
+            }
+            else if (message.channel === "validana_notification") {
+                const payload = JSON.parse(message.payload);
+                events_1.ServerEventEmitter.get("notification").emit(payload.data, payload.type);
+            }
+            else {
+                validana_core_1.Log.warn("Notification for unknown channel: " + message.channel);
             }
         });
         try {
@@ -265,6 +280,7 @@ function start(requestHandlers = new Map()) {
         }
         try {
             await connection.query("LISTEN blocks;");
+            await connection.query("LISTEN validana_notification;");
         }
         catch (error) {
             await connection.end().catch(() => { });
@@ -282,8 +298,9 @@ function start(requestHandlers = new Map()) {
         }
     }
     function shutdownWorker(id, hardkill) {
-        if (Cluster.workers[id] !== undefined) {
-            Cluster.workers[id].send({ type: "shutdown", graceful: !hardkill }, undefined, (error) => {
+        const workers = Cluster.workers;
+        if (workers[id] !== undefined) {
+            workers[id].send({ type: "shutdown", graceful: !hardkill }, (error) => {
                 if (error !== null && error.message !== "write EPIPE") {
                     validana_core_1.Log.warn(`Worker ${id} shutdown failed`, error);
                 }
@@ -295,11 +312,11 @@ function start(requestHandlers = new Map()) {
         }
         if (hardkill) {
             setTimeout(() => {
-                if (Cluster.workers[id] !== undefined) {
+                if (workers[id] !== undefined) {
                     isGraceful = false;
                     validana_core_1.Log.info(`Worker ${id} not shutting down.`);
                     validana_core_1.Log.fatal("Hard killing worker.");
-                    process.kill(Cluster.workers[id].process.pid, "SIGKILL");
+                    process.kill(workers[id].process.pid, "SIGKILL");
                 }
             }, 10000);
         }

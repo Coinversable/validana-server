@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.BasicPushTypes = exports.BasicRequestTypes = void 0;
 var BasicRequestTypes;
 (function (BasicRequestTypes) {
     BasicRequestTypes["Process"] = "process";

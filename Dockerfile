@@ -1,11 +1,13 @@
-ARG NODEVERSION=12
+ARG NODEVERSION=16
 FROM node:${NODEVERSION}
 
 # Clone the projects into the docker container and compile it
 ENV NODE_ENV=production
 ENV NODE_NO_WARNINGS=1
-RUN git clone https://github.com/Coinversable/validana-server.git --branch v2.1.0 /usr/node
+RUN yarn global add typescript
+RUN git clone https://github.com/Coinversable/validana-server.git /usr/node
 RUN yarn --cwd /usr/node install --frozen-lockfile
+RUN tsc -p /usr/node/tsconfig.json
 
 # Add certificate if wanted
 #ENV VSERVER_TLS=true
@@ -38,4 +40,4 @@ RUN yarn --cwd /usr/node install --frozen-lockfile
 #Add user and entry point
 USER node
 WORKDIR /usr/node
-ENTRYPOINT ["node", "-e", "require('./dist/index.js').start(new Map().set('v1',new (require('./dist/basics/basichandler.js').default)()))", "dist/index.js"]
+ENTRYPOINT ["node", "-e", "require('./dist/index.js').start(new Map().set('v1',require('./dist/basics/basichandler.js').default))", "dist/index.js"]

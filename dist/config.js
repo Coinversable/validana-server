@@ -7,10 +7,11 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-const Cluster = require("cluster");
+exports.Config = void 0;
 const FS = require("fs");
 const Path = require("path");
 const validana_core_1 = require("@coinversable/validana-core");
+const Cluster = require("cluster");
 class Config {
     static get() {
         if (!Config.loadedConfig) {
@@ -153,14 +154,14 @@ class Config {
         }
     }
     static validate() {
-        var _a, _b, _c, _d;
+        var _a, _b;
         for (const key of Config.toLoadString.keys()) {
             const toLoad = Config.toLoadString.get(key);
             if (Config.config[key] !== undefined && (typeof Config.config[key] !== toLoad.type ||
                 Config.config[key] === null || toLoad.type === "number" && !Number.isSafeInteger(Config.config[key]))) {
                 throw new Error(`Invalid value for key: ${key}, expected a ${toLoad.type}.`);
             }
-            (_b = (_a = toLoad).validator) === null || _b === void 0 ? void 0 : _b.call(_a, Config.config[key], Config.config, key);
+            (_a = toLoad.validator) === null || _a === void 0 ? void 0 : _a.call(toLoad, Config.config[key], Config.config, key);
         }
         for (const key of Object.keys(Config.config)) {
             for (const regExp of Config.toLoadRegExp.keys()) {
@@ -170,7 +171,7 @@ class Config {
                         || toLoad.type === "number" && !Number.isSafeInteger(Config.config[key])) {
                         throw new Error(`Invalid value for key: ${key}, expected a ${toLoad.type}.`);
                     }
-                    (_d = (_c = toLoad).validator) === null || _d === void 0 ? void 0 : _d.call(_c, Config.config[key], Config.config, key);
+                    (_b = toLoad.validator) === null || _b === void 0 ? void 0 : _b.call(toLoad, Config.config[key], Config.config, key);
                 }
             }
         }

@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Protocol = void 0;
 const Path = require("path");
 const validana_core_1 = require("@coinversable/validana-core");
 const config_1 = require("../config");

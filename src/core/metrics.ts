@@ -1,7 +1,9 @@
 import { Config } from "../config";
 import { Database } from "./database";
 import * as OS from "os";
-import * as Cluster from "cluster";
+import { Cluster as ClusterType } from "cluster";
+// eslint-disable-next-line
+const Cluster: ClusterType = require("cluster");
 
 interface TotalMetrics {
 	[key: string]: number;
@@ -173,9 +175,7 @@ export class Metrics {
 		}
 
 		//Create an object containing all metrics
-		let currentMetrics;
-		let totalMetrics;
-		[currentMetrics, totalMetrics] = await Promise.all([
+		const [currentMetrics, totalMetrics] = await Promise.all([
 			Metrics.database.query("SELECT metric, jsonb_agg(value) AS value FROM basics.metrics WHERE worker != -1 GROUP BY metric;", []),
 			Metrics.database.query("SELECT metric, value FROM basics.metrics WHERE worker = -1;", [])
 		]);
@@ -221,7 +221,7 @@ export class Metrics {
 
 	/** Return all default metrics in Prometheus format. */
 	private static exportPrometheus(input: CurrentMetricsArrays & TotalMetrics): string {
-		// Histograms contain the result of this and all previous buckets.
+		//Histograms contain the result of this and all previous buckets.
 		const latencyBucket8 = input.latency8;
 		const latencyBucket16 = input.latency16 + latencyBucket8;
 		const latencyBucket32 = input.latency32 + latencyBucket16;
@@ -243,7 +243,7 @@ export class Metrics {
 
 		//When was the last update
 		const latestUpdate = Math.max(...input.lastSync);
-		// Number of worker threads.
+		//Number of worker threads.
 		const workers = Config.get().VSERVER_WORKERS > 0 ? Config.get().VSERVER_WORKERS :
 			Math.max(Metrics.cpus + Config.get().VSERVER_WORKERS, 1);
 
@@ -380,7 +380,7 @@ export class Metrics {
 			//For current values overwrite old values.
 			await client.query("INSERT INTO basics.metrics (metric, worker, value) VALUES (unnest($1::TEXT[]), $2, unnest($3::BIGINT[])) " +
 				"ON CONFLICT ON CONSTRAINT metrics_pkey DO UPDATE SET value = EXCLUDED.value;",
-				[Metrics.currentNames, Cluster.worker.id, currentValues]);
+				[Metrics.currentNames, Cluster.worker!.id, currentValues]);
 
 			if (!Metrics.syncedOnce) {
 				Metrics.syncedOnce = true;
@@ -391,7 +391,7 @@ export class Metrics {
 				 *  but that is hardly the biggest problem if workers die.
 				 */
 				await client.query("DELETE FROM basics.metrics WHERE metric = ANY($1) AND worker != -1 AND worker != $2;",
-					[[...Metrics.totalNames, ...Metrics.currentNames], Cluster.worker.id]);
+					[[...Metrics.totalNames, ...Metrics.currentNames], Cluster.worker!.id]);
 			}
 
 			await client.query("COMMIT;");

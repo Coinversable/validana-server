@@ -86,7 +86,7 @@ export class HttpServer extends EventEmitter {
 		this.permanentlyClosed = this.permanentlyClosed || permanent;
 
 		//Stop accepting new connections.
-		this.server.close();
+		await new Promise((resolve) => this.server.close(resolve));
 
 		//Notify listeners that we closed the server to new connections (but not yet closed all connections).
 		this.emit("close", permanent, graceful);

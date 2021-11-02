@@ -7,6 +7,7 @@
  * found in the LICENSE file at https://validana.io/license
  */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.HttpProtocol = void 0;
 const querystring = require("querystring");
 const validana_core_1 = require("@coinversable/validana-core");
 const protocol_1 = require("./protocol");
@@ -33,7 +34,7 @@ class HttpProtocol extends protocol_1.Protocol {
             }
         });
         this.httpServer.server.on("connection", (socket) => socket.setTimeout(120000, () => socket.destroy()));
-        this.httpServer.server.on("request", async (request, response) => {
+        this.httpServer.server.on("request", (request, response) => {
             request.socket.setTimeout(0);
             if (this.connections.indexOf(request.socket) === -1) {
                 this.connections.push(request.socket);
@@ -117,10 +118,12 @@ class HttpProtocol extends protocol_1.Protocol {
                             data = JSON.parse(body);
                         }
                         catch (error) {
-                            metrics_1.Metrics.stats.requestsClientErrorresponset++;
-                            response.writeHead(400, HttpProtocol.headerOptionsFailed);
-                            response.end("Invalid request json.");
-                            return;
+                            if (body.indexOf("=") !== -1) {
+                                data = querystring.parse(body);
+                            }
+                            else {
+                                data = body;
+                            }
                         }
                     }
                     this.requestHandler({
@@ -146,7 +149,7 @@ class HttpProtocol extends protocol_1.Protocol {
         }
         catch (error) {
             if (error instanceof Error) {
-                validana_core_1.Log.warn("Request data that resulted in error: " + data);
+                validana_core_1.Log.warn("Request data that resulted in error: " + dataString);
                 validana_core_1.Log.error(`Error occured during request of type ${message.version}:${type}.`, error);
                 this.sendError(message, "Error occured during request.");
             }
@@ -167,7 +170,7 @@ class HttpProtocol extends protocol_1.Protocol {
     sendResponse(message, data) {
         var _a;
         if (!message.request.socket.writableEnded && !message.request.socket.destroyed) {
-            const statusCode = (_a = message.statusCode, (_a !== null && _a !== void 0 ? _a : 200));
+            const statusCode = (_a = message.statusCode) !== null && _a !== void 0 ? _a : 200;
             if (statusCode < 400) {
                 metrics_1.Metrics.stats.requestsSuccessresponset++;
             }
@@ -211,7 +214,7 @@ class HttpProtocol extends protocol_1.Protocol {
             if (message.log) {
                 validana_core_1.Log.debug(`Send error: ${error}`);
             }
-            const statusCode = (_a = message.statusCode, (_a !== null && _a !== void 0 ? _a : 500));
+            const statusCode = (_a = message.statusCode) !== null && _a !== void 0 ? _a : 500;
             if (statusCode >= 400 && statusCode < 500) {
                 metrics_1.Metrics.stats.requestsClientErrorresponset++;
             }

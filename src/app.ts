@@ -6,7 +6,6 @@
  * found in the LICENSE file at https://validana.io/license
  */
 
-import * as Cluster from "cluster";
 import * as OS from "os";
 import { Log } from "@coinversable/validana-core";
 import { Protocol } from "./protocol/protocol";
@@ -18,9 +17,12 @@ import { HttpServer } from "./core/httpserver";
 import { RequestHandler } from "./core/requesthandler";
 import { ServerEventGenerator, ServerEventEmitter } from "./core/events";
 import { Metrics } from "./core/metrics";
+import { Cluster as ClusterType, Worker } from "cluster";
+// eslint-disable-next-line
+const Cluster: ClusterType = require("cluster");
 
 /** An extension to the standard cluster worker to see how many times it failed to notify the master. */
-class ExtendedWorker extends Cluster.Worker {
+class ExtendedWorker extends Worker {
 	public notNotifiedTimes: number | undefined;
 }
 
@@ -67,7 +69,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 	try {
 		Config.get();
 		if (Config.get().VSERVER_SENTRYURL !== undefined) {
-			Log.setReportErrors(Config.get().VSERVER_SENTRYURL!);
+			Log.setReportErrors(Config.get().VSERVER_SENTRYURL);
 		}
 	} catch (error) {
 		Log.error(`${error.message} Exiting process.`);
@@ -77,6 +79,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 	//Set log information:
 	Log.options.tags.master = Cluster.isMaster.toString();
 	Log.options.tags.nodejsVersion = process.versions.node;
+	//eslint-disable-next-line @typescript-eslint/no-var-requires
 	Log.options.tags.serverVersion = require("../package.json").version;
 	Log.Level = Config.get().VSERVER_LOGLEVEL;
 	if (Config.get().VSERVER_LOGFORMAT !== undefined) {
@@ -107,7 +110,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 		}
 
 		//If a worker shuts down.
-		Cluster.on("exit", (worker: Cluster.Worker, code: number, _: string) => {
+		Cluster.on("exit", (worker: Worker, code: number, _: string) => {
 			if (code === 0) {
 				//Should only happen if master told worker to shut down, for example when we tell the master to shut down.
 				Log.info(`Worker ${worker.id} (pid: ${worker.process.pid}) exited.`);
@@ -125,7 +128,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 		});
 
 		//If a worker send a message.
-		Cluster.on("message", (worker: Cluster.Worker, message: any) => {
+		Cluster.on("message", (worker: Worker, message: any) => {
 			if (typeof message === "object" && message !== null && message.type === "report" && Number.isFinite(message.memory)) {
 				//If the message is the amount of memory the worker uses (which is also a ping it is still active)
 				(worker as ExtendedWorker).notNotifiedTimes = 0;
@@ -142,8 +145,8 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 
 		//Check if the worker is still responding
 		setInterval(() => {
-			for (const id of Object.keys(Cluster.workers)) {
-				const worker = Cluster.workers[id] as ExtendedWorker | undefined;
+			for (const id of Object.keys(Cluster.workers!)) {
+				const worker = Cluster.workers![id] as ExtendedWorker | undefined;
 				if (worker !== undefined) {
 					if (worker.notNotifiedTimes === undefined) {
 						worker.notNotifiedTimes = 0;
@@ -179,12 +182,12 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 
 			//Send shutdown signal to all workers.
 			isGraceful = true;
-			for (const id of Object.keys(Cluster.workers)) {
+			for (const id of Object.keys(Cluster.workers!)) {
 				shutdownWorker(id, hardkill);
 			}
 
 			setInterval(() => {
-				if (Object.keys(Cluster.workers).length === 0) {
+				if (Object.keys(Cluster.workers!).length === 0) {
 					Log.info("Shutdown completed");
 					process.exit(code === 0 && !isGraceful ? 1 : code);
 				}
@@ -194,18 +197,19 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 
 	/** Setup a worker. */
 	function setupWorker(): void {
+		const worker = Cluster.worker!;
 		//If this process encounters an error when being created/destroyed. We do not do a graceful shutdown in this case.
-		Cluster.worker.on("error", (error) => {
+		worker.on("error", (error) => {
 			Log.error("Worker encountered an error", error);
 			process.exit(1);
 		});
 
-		Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) started`);
+		Log.info(`Worker ${worker.id} (pid: ${process.pid}) started`);
 
 		//Setup heartbeat
 		setInterval(() => {
 			const memory = process.memoryUsage();
-			Cluster.worker.send({ type: "report", memory: (memory.heapTotal + memory.external) / 1024 / 1024 });
+			worker.send({ type: "report", memory: (memory.heapTotal + memory.external) / 1024 / 1024 });
 		}, 5000);
 
 		//Setup the database
@@ -217,11 +221,12 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 			port: Config.get().VSERVER_DBPORT,
 			min: Config.get().VSERVER_DBMINCONNECTIONS,
 			max: Config.get().VSERVER_DBMAXCONNECTIONS,
-			connectionTimeoutMillis: 5000
+			connectionTimeoutMillis: 10000,
+			idleTimeoutMillis: 20000
 		});
 
 		//Listen to new blocks being processed
-		listenNewBlocks();
+		listenNotification();
 
 		//Update metrics.
 		if (Config.get().VSERVER_METRICSINTERVAL !== 0) {
@@ -236,15 +241,15 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 			server = new HttpServer(Config.get().VSERVER_HTTPPORT);
 		}
 		if (Config.get().VSERVER_HTTPPORT !== 0) {
-			protocols.push(new HttpProtocol(Cluster.worker, server ?? Config.get().VSERVER_HTTPPORT, requestHandlers));
+			protocols.push(new HttpProtocol(worker, server ?? Config.get().VSERVER_HTTPPORT, requestHandlers));
 		}
 		if (Config.get().VSERVER_WSPORT !== 0) {
-			protocols.push(new WebsocketProtocol(Cluster.worker, server ?? Config.get().VSERVER_WSPORT, requestHandlers));
+			protocols.push(new WebsocketProtocol(worker, server ?? Config.get().VSERVER_WSPORT, requestHandlers));
 		}
 
 		//If the master sends a shutdown message we do a graceful shutdown.
-		Cluster.worker.on("message", async (message: any) => {
-			Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) received message: ${message?.type}`);
+		worker.on("message", async (message: any) => {
+			Log.info(`Worker ${worker.id} (pid: ${process.pid}) received message: ${message?.type}`);
 			if (message.type === "shutdown" && typeof message.graceful === "boolean") {
 				if (!isShuttingDown) {
 					isShuttingDown = true;
@@ -261,7 +266,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 
 		//What to do if we receive a signal to shutdown?
 		process.on("SIGTERM", async () => {
-			Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) received SIGTERM`);
+			Log.info(`Worker ${worker.id} (pid: ${process.pid}) received SIGTERM`);
 			if (!isShuttingDown) {
 				isShuttingDown = true;
 				const promises = [];
@@ -274,7 +279,7 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 			}
 		});
 		process.on("SIGINT", async () => {
-			Log.info(`Worker ${Cluster.worker.id} (pid: ${process.pid}) received SIGINT`);
+			Log.info(`Worker ${worker.id} (pid: ${process.pid}) received SIGINT`);
 			if (!isShuttingDown) {
 				isShuttingDown = true;
 				const promises = [];
@@ -288,37 +293,49 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 		});
 	}
 
-	/** Let a worker listen for new blocks being processed. */
-	async function listenNewBlocks(): Promise<void> {
+	/** Let a worker listen for new blocks being processed and other notifications. */
+	async function listenNotification(): Promise<void> {
+		if (isShuttingDown) {
+			return;
+		}
 		//Use dedicated connection to avoid using up pool slots.
 		const connection = Database.get().getDedicatedConnection();
 		//If something goes wrong reconnect in a moment.
-		connection.on("end", () => setTimeout(() => listenNewBlocks(), 5000));
+		connection.on("end", () => setTimeout(() => listenNotification(), 5000));
 		//When a new block is processed:
 		connection.on("notification", async (message) => {
-			const payload: { block?: number, ts: number, txs?: number, other: number } = JSON.parse(message.payload!);
-			//Check if there were any transactions inside the block and someone is listening for new transactions.
-			if ((payload.txs !== undefined && payload.txs > 0 || payload.other !== 0) && (
-				ServerEventEmitter.get("transactionId").hasSubscribers() ||
-				ServerEventEmitter.get("transaction").hasSubscribers() ||
-				ServerEventEmitter.get("transactionContract").hasSubscribers() ||
-				ServerEventEmitter.get("transactionAddress").hasSubscribers())) {
+			if (message.channel === "blocks") {
+				const payload: { block?: number, ts: number, txs?: number, other: number } = JSON.parse(message.payload!);
+				//Check if there were any transactions inside the block and someone is listening for new transactions.
+				if ((payload.txs !== undefined && payload.txs > 0 || payload.other !== 0) && (
+					ServerEventEmitter.get("transactionId").hasSubscribers() ||
+					ServerEventEmitter.get("transaction").hasSubscribers() ||
+					ServerEventEmitter.get("transactionContract").hasSubscribers() ||
+					ServerEventEmitter.get("transactionAddress").hasSubscribers())) {
 
-				const result = await Database.get().query("SELECT * FROM basics.transactions WHERE processed_ts = $1;", [payload.ts]);
-				//Notify listeners about the new transactions.
-				for (const row of result.rows as DBTransaction[]) {
-					ServerEventEmitter.get("transactionId").emit(row, row.transaction_id.toString("hex"));
-					if (row.sender !== null) {
-						ServerEventEmitter.get("transactionAddress").emit(row, row.sender);
+					const result = await Database.get().query("SELECT * FROM basics.transactions WHERE processed_ts = $1;", [payload.ts]);
+					//Notify listeners about the new transactions.
+					for (const row of result.rows as DBTransaction[]) {
+						ServerEventEmitter.get("transactionId").emit(row, row.transaction_id.toString("hex"));
+						if (row.sender !== null) {
+							ServerEventEmitter.get("transactionAddress").emit(row, row.sender);
+						}
+						if (row.receiver !== null) {
+							ServerEventEmitter.get("transactionAddress").emit(row, row.receiver);
+						}
+						if (row.contract_type !== null) {
+							ServerEventEmitter.get("transactionContract").emit(row, row.contract_type);
+						}
+						ServerEventEmitter.get("transaction").emit(row);
 					}
-					if (row.receiver !== null) {
-						ServerEventEmitter.get("transactionAddress").emit(row, row.receiver);
-					}
-					if (row.contract_type !== null) {
-						ServerEventEmitter.get("transactionContract").emit(row, row.contract_type);
-					}
-					ServerEventEmitter.get("transaction").emit(row);
 				}
+			} else if (message.channel === "validana_notification") {
+				const payload: { type: string, data: any } = JSON.parse(message.payload!);
+
+				//Send notification to user code.
+				ServerEventEmitter.get("notification").emit(payload.data, payload.type);
+			} else {
+				Log.warn("Notification for unknown channel: " + message.channel);
 			}
 		});
 		try {
@@ -329,9 +346,10 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 		}
 		try {
 			await connection.query("LISTEN blocks;");
+			await connection.query("LISTEN validana_notification;");
 		} catch (error) {
 			//Call on("end") which will setup a new connection in a moment.
-			await connection.end().catch(() => {});
+			await connection.end().catch(() => { });
 		}
 	}
 
@@ -354,9 +372,10 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 	 * @param hardkill whether to kill the worker if it does not gracefully shutdown within 10 seconds.
 	 */
 	function shutdownWorker(id: string, hardkill: boolean): void {
+		const workers = Cluster.workers!;
 		//Send shutdown message for a chance to do a graceful shutdown.
-		if (Cluster.workers[id] !== undefined) {
-			Cluster.workers[id]!.send({ type: "shutdown", graceful: !hardkill }, undefined, (error: Error | null) => {
+		if (workers[id] !== undefined) {
+			workers[id]!.send({ type: "shutdown", graceful: !hardkill }, (error: Error | null) => {
 				//Doesn't matter if it fails, there will be a hard kill in 10 seconds.
 				//(write EPIPE errors mean the worker closed the connection, properly because it already exited.)
 				if (error !== null && error.message !== "write EPIPE") {
@@ -371,11 +390,11 @@ export function start(requestHandlers = new Map<string, RequestHandler>()): void
 		//Give every handler 10 seconds to shut down before doing a hard kill.
 		if (hardkill) {
 			setTimeout(() => {
-				if (Cluster.workers[id] !== undefined) {
+				if (workers[id] !== undefined) {
 					isGraceful = false;
 					Log.info(`Worker ${id} not shutting down.`);
 					Log.fatal("Hard killing worker.");
-					process.kill(Cluster.workers[id]!.process.pid, "SIGKILL");
+					process.kill(workers[id]!.process.pid!, "SIGKILL");
 				}
 			}, 10000);
 		}

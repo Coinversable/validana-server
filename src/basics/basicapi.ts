@@ -8,7 +8,7 @@
 
 /**
  * Some basic requests, recommended for any RequestHandler:
- * Process: ProcessRequest, no data
+ * Process: ProcessRequest, no data or TxResponseOrPush if wait is true
  * Contracts: no request data | string, Contract[]
  * Transaction: TxRequest, TxResponseOrPush | undefined, may result in pushtransaction: Transaction with data TxResponseOrPush
  * TxStatus: TxRequest, TxStatusResponse, may result in pushtransaction: Transaction with data TxResponseOrPush
@@ -41,7 +41,11 @@ export interface ProcessRequest {
 	base64tx: string;
 	/** Optional info about when it was created. */
 	createTs?: number;
-	/** Do not return till the transation has been processed. In this case the status code will be 200/422 depending on the result. */
+	/**
+	 * Do not return till the transation has been processed.
+	 * In this case the status code will be 200/422, instead of 202, depending on the result.
+	 * In addition it will return TxResponseOrPush instead of undefined.
+	 */
 	wait?: boolean;
 }
 
